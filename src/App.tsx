@@ -20,7 +20,9 @@ import {
   MessageSquare,
   ThumbsUp,
   HelpCircle,
-  Inbox
+  Inbox,
+  ArrowUp,
+  MessageCircle
 } from 'lucide-react';
 import Header from './components/Header';
 import PromoBanner from './components/PromoBanner';
@@ -29,6 +31,9 @@ import ProductModal from './components/ProductModal';
 import AddProductForm from './components/AddProductForm';
 import EditProductForm from './components/EditProductForm';
 import AuthModal from './components/AuthModal';
+import ShopeeGenerator from './components/ShopeeGenerator';
+import HeaderAd from './components/HeaderAd';
+import FooterAd from './components/FooterAd';
 import { INITIAL_PRODUCTS } from './data';
 import { Product, CategoryFilter, User } from './types';
 
@@ -49,21 +54,47 @@ export default function App() {
   // Statistics trackers
   const [totalClicksCount, setTotalClicksCount] = useState(0);
 
-  // Load user session & products database
+  // Passkey Prompt states (restricted access with 606499)
+  const [isPasskeyOpen, setIsPasskeyOpen] = useState(false);
+  const [passkeyInput, setPasskeyInput] = useState('');
+  const [isPasskeyError, setIsPasskeyError] = useState(false);
+  const [passkeyPendingAction, setPasskeyPendingAction] = useState<'shopee' | 'manual' | null>(null);
+  const [pendingAddProduct, setPendingAddProduct] = useState<Omit<Product, 'id' | 'clicks' | 'date'> | null>(null);
+
+  // Load user session & products database (using Square Cloud dynamic api)
   useEffect(() => {
-    // 1. Initial product population
-    const cachedProducts = localStorage.getItem('bass_compre_mais_products');
-    if (cachedProducts) {
+    // 1. Initial product database fetch
+    const fetchProductsFromDatabase = async () => {
       try {
-        const parsed = JSON.parse(cachedProducts) as Product[];
-        setProducts(parsed);
+        const response = await fetch('/api/products');
+        if (response.ok) {
+          const remoteProducts = await response.json();
+          if (Array.isArray(remoteProducts) && remoteProducts.length > 0) {
+            setProducts(remoteProducts);
+            localStorage.setItem('bass_compre_mais_products', JSON.stringify(remoteProducts));
+            return;
+          }
+        }
       } catch (err) {
-        setProducts(INITIAL_PRODUCTS);
+        console.warn('Servidor de banco de dados offline ou iniciando. Usando cache local:', err);
       }
-    } else {
-      setProducts(INITIAL_PRODUCTS);
-      localStorage.setItem('bass_compre_mais_products', JSON.stringify(INITIAL_PRODUCTS));
-    }
+
+      // Fallback local storage / static seed
+      const cachedProducts = localStorage.getItem('bass_compre_mais_products');
+      if (cachedProducts) {
+        try {
+          const parsed = JSON.parse(cachedProducts) as Product[];
+          setProducts(parsed);
+        } catch (err) {
+          setProducts(INITIAL_PRODUCTS);
+        }
+      } else {
+        setProducts(INITIAL_PRODUCTS);
+        localStorage.setItem('bass_compre_mais_products', JSON.stringify(INITIAL_PRODUCTS));
+      }
+    };
+
+    fetchProductsFromDatabase();
 
     // 2. Load cached logged in user session
     const cachedUser = localStorage.getItem('bass_compre_mais_logged_in_user');
@@ -96,58 +127,160 @@ export default function App() {
     localStorage.removeItem('bass_compre_mais_logged_in_user');
   };
 
-  // Handle addition of a new user-generated "Achadinho"
-  const handleAddNewProduct = (newProductData: Omit<Product, 'id' | 'clicks' | 'date'>) => {
-    const newProduct: Product = {
-      ...newProductData,
-      id: `custom-offer-${Date.now()}`,
-      clicks: 0,
-      date: new Date().toLocaleDateString('pt-BR', { month: 'long', day: '2-digit', year: 'numeric' })
-    };
+  // Securely verify admin access using master key 606499
+  const handleVerifyPasskey = () => {
+    if (passkeyInput === '606499') {
+      const defaultAdmin: User = {
+        name: 'Administrador Principal',
+        email: 'admin@bass.com',
+        isAdmin: true
+      };
+      handleLoginSuccess(defaultAdmin);
+      setIsPasskeyOpen(false);
+      setIsPasskeyError(false);
+      setPasskeyInput('');
 
-    const updated = [newProduct, ...products];
-    setProducts(updated);
-    localStorage.setItem('bass_compre_mais_products', JSON.stringify(updated));
-  };
-
-  // Handle updates of an existing "Achadinho"
-  const handleUpdateProduct = (updatedProduct: Product) => {
-    const updated = products.map((item) => (item.id === updatedProduct.id ? updatedProduct : item));
-    setProducts(updated);
-    localStorage.setItem('bass_compre_mais_products', JSON.stringify(updated));
-    
-    // Auto sync modal preview details if currently watching
-    if (activeProductDetail && activeProductDetail.id === updatedProduct.id) {
-      setActiveProductDetail(updatedProduct);
+      if (passkeyPendingAction === 'shopee' && pendingAddProduct) {
+        handleAddNewProduct(pendingAddProduct);
+      } else if (passkeyPendingAction === 'manual') {
+        setIsAdminOpen(true);
+      }
+      
+      setPasskeyPendingAction(null);
+      setPendingAddProduct(null);
+    } else {
+      setIsPasskeyError(true);
+      setPasskeyInput('');
     }
   };
 
-  // Handle deletion of an "Achadinho"
-  const handleDeleteProduct = (productId: string) => {
-    const updated = products.filter((item) => item.id !== productId);
-    setProducts(updated);
-    localStorage.setItem('bass_compre_mais_products', JSON.stringify(updated));
-
-    // Deselect if we were actively viewing detail block
-    if (activeProductDetail && activeProductDetail.id === productId) {
-      setActiveProductDetail(null);
+  // Intercept addition of products & check admin status
+  const handleAddNewProductWithSecurity = (newProductData: Omit<Product, 'id' | 'clicks' | 'date'>) => {
+    if (currentUser?.isAdmin) {
+      handleAddNewProduct(newProductData);
+    } else {
+      setPendingAddProduct(newProductData);
+      setPasskeyPendingAction('shopee');
+      setIsPasskeyOpen(true);
     }
   };
 
-  // Simulates increasing click count for social engagement feedback
-  const handleIncrementClicks = (productId: string) => {
+  // Handle addition of a new user-generated "Achadinho" (dynamic node database API integration)
+  const handleAddNewProduct = async (newProductData: Omit<Product, 'id' | 'clicks' | 'date'>) => {
+    try {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newProductData),
+      });
+
+      if (response.ok) {
+        const persistedProduct = await response.json();
+        const updated = [persistedProduct, ...products];
+        setProducts(updated);
+        localStorage.setItem('bass_compre_mais_products', JSON.stringify(updated));
+      } else {
+        throw new Error('Sinal inválido do servidor ao salvar.');
+      }
+    } catch (err) {
+      console.warn('Sincronização com Square Cloud offline, usando cache local temporário:', err);
+      const newProduct: Product = {
+        ...newProductData,
+        id: `custom-offer-${Date.now()}`,
+        clicks: 0,
+        date: new Date().toLocaleDateString('pt-BR', { month: 'long', day: '2-digit', year: 'numeric' })
+      };
+      const updated = [newProduct, ...products];
+      setProducts(updated);
+      localStorage.setItem('bass_compre_mais_products', JSON.stringify(updated));
+    }
+  };
+
+  // Handle updates of an existing "Achadinho" and persist to database file
+  const handleUpdateProduct = async (updatedProduct: Product) => {
+    try {
+      const response = await fetch(`/api/products/${updatedProduct.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedProduct),
+      });
+
+      if (response.ok) {
+        const persisted = await response.json();
+        const updated = products.map((item) => (item.id === persisted.id ? persisted : item));
+        setProducts(updated);
+        localStorage.setItem('bass_compre_mais_products', JSON.stringify(updated));
+        if (activeProductDetail && activeProductDetail.id === persisted.id) {
+          setActiveProductDetail(persisted);
+        }
+      } else {
+        throw new Error('Falha ao atualizar via API.');
+      }
+    } catch (err) {
+      console.warn('Usando alterador offline backup:', err);
+      const updated = products.map((item) => (item.id === updatedProduct.id ? updatedProduct : item));
+      setProducts(updated);
+      localStorage.setItem('bass_compre_mais_products', JSON.stringify(updated));
+      if (activeProductDetail && activeProductDetail.id === updatedProduct.id) {
+        setActiveProductDetail(updatedProduct);
+      }
+    }
+  };
+
+  // Handle deletion of an "Achadinho" and sync to database file
+  const handleDeleteProduct = async (productId: string) => {
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        const updated = products.filter((item) => item.id !== productId);
+        setProducts(updated);
+        localStorage.setItem('bass_compre_mais_products', JSON.stringify(updated));
+        if (activeProductDetail && activeProductDetail.id === productId) {
+          setActiveProductDetail(null);
+        }
+      } else {
+        throw new Error('Erro ao deletar via API');
+      }
+    } catch (err) {
+      console.warn('Esclusão local offline realizada:', err);
+      const updated = products.filter((item) => item.id !== productId);
+      setProducts(updated);
+      localStorage.setItem('bass_compre_mais_products', JSON.stringify(updated));
+      if (activeProductDetail && activeProductDetail.id === productId) {
+        setActiveProductDetail(null);
+      }
+    }
+  };
+
+  // Simulates increasing click count with real-time Express backend feedback metrics tracker
+  const handleIncrementClicks = async (productId: string) => {
+    // Optimistic UI state update to keep the app blazing fast
     const updated = products.map((p) => {
       if (p.id === productId) {
-        return { ...p, clicks: p.clicks + 1 };
+        return { ...p, clicks: (p.clicks || 0) + 1 };
       }
       return p;
     });
     setProducts(updated);
     localStorage.setItem('bass_compre_mais_products', JSON.stringify(updated));
 
-    // Update active modal view references if currently visible
     if (activeProductDetail && activeProductDetail.id === productId) {
-      setActiveProductDetail((prev) => prev ? { ...prev, clicks: prev.clicks + 1 } : null);
+      setActiveProductDetail((prev) => prev ? { ...prev, clicks: (prev.clicks || 0) + 1 } : null);
+    }
+
+    try {
+      await fetch(`/api/products/${productId}/click`, {
+        method: 'POST'
+      });
+    } catch (err) {
+      console.warn('Falhou ao mandar feedback de cliques ao servidor:', err);
     }
   };
 
@@ -189,7 +322,14 @@ export default function App() {
       <Header 
         searchQuery={searchQuery} 
         setSearchQuery={setSearchQuery} 
-        onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenAdmin={() => {
+          if (currentUser?.isAdmin) {
+            setIsAdminOpen(true);
+          } else {
+            setPasskeyPendingAction('manual');
+            setIsPasskeyOpen(true);
+          }
+        }}
         productsCount={products.length}
         currentUser={currentUser}
         onOpenAuth={() => setIsAuthOpen(true)}
@@ -199,6 +339,9 @@ export default function App() {
       {/* Main Container Wrapper */}
       <main className="max-w-4xl mx-auto px-4 py-8 flex-1 w-full space-y-6">
         
+        {/* Header Advertisement space rendering */}
+        <HeaderAd />
+
         {/* Dynamic Highlight Promo Banner */}
         <PromoBanner 
           onJoinWhatsApp={handleJoinWhatsAppMain}
@@ -344,8 +487,28 @@ export default function App() {
 
       </main>
 
+      {/* Shopee AI Pro Generator Section matches image layout precisely */}
+      <section className="max-w-4xl mx-auto px-4 pb-12 w-full space-y-6">
+        <ShopeeGenerator 
+          onAddGeneratedProduct={handleAddNewProductWithSecurity}
+          onOpenManualModal={() => {
+            if (currentUser?.isAdmin) {
+              setIsAdminOpen(true);
+            } else {
+              setPasskeyPendingAction('manual');
+              setIsPasskeyOpen(true);
+            }
+          }}
+        />
+
+        {/* Footer Advertisement space rendering */}
+        <div className="pt-2">
+          <FooterAd />
+        </div>
+      </section>
+
       {/* Structured Footer */}
-      <footer className="max-w-4xl mx-auto px-4 mt-12 pt-6 border-t border-zinc-900 text-center space-y-3.5 w-full">
+      <footer className="max-w-4xl mx-auto px-4 mt-6 pt-6 border-t border-zinc-900 text-center space-y-3.5 w-full">
         <p className="text-xs text-zinc-500 font-mono leading-relaxed">
           © 2026 <span className="text-zinc-400 font-bold">BassCompreMaisAchadinho</span>. Todos os direitos reservados.<br />
           Esta plataforma atua como divulgadora de cupons promocionais e links de afiliados da Shopee e parceiros. 
@@ -394,6 +557,93 @@ export default function App() {
           onLoginSuccess={handleLoginSuccess}
         />
       )}
+
+      {/* Dynamic Passkey Verification Modal */}
+      {isPasskeyOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="text-center space-y-1.5 pb-2 border-b border-zinc-850">
+              <span className="text-2xl">🔒</span>
+              <h3 className="font-display text-sm sm:text-base font-bold text-white uppercase tracking-tight">
+                Acesso Protegido ao Dono
+              </h3>
+              <p className="text-[11px] text-zinc-400">
+                Esta ação é restrita ao Administrador. Digite a senha do ADM para continuar:
+              </p>
+            </div>
+
+            {isPasskeyError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-xs rounded-xl text-center font-bold font-mono">
+                ❌ Senha do ADM Incorreta!
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <input
+                type="password"
+                maxLength={10}
+                placeholder="Digite a senha (606499)"
+                value={passkeyInput}
+                onChange={(e) => {
+                  setPasskeyInput(e.target.value);
+                  setIsPasskeyError(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleVerifyPasskey();
+                  }
+                }}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-center text-sm font-bold font-mono tracking-widest text-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-zinc-700"
+                autoFocus
+              />
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPasskeyOpen(false);
+                    setPasskeyInput('');
+                    setIsPasskeyError(false);
+                    setPasskeyPendingAction(null);
+                    setPendingAddProduct(null);
+                  }}
+                  className="flex-1 py-2.5 text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifyPasskey}
+                  className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-zinc-950 font-display font-black text-xs rounded-xl hover:shadow-lg hover:shadow-amber-500/10 transition-all cursor-pointer"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating utility buttons matching the screenshot exactly */}
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-2.5 items-end">
+        {/* Scroll back to top with orange theme */}
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="p-3 bg-amber-500 hover:bg-amber-600 border border-amber-400/20 text-zinc-950 rounded-full shadow-lg hover:shadow-amber-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+          title="Voltar ao Topo"
+        >
+          <ArrowUp className="w-5 h-5 text-zinc-950" />
+        </button>
+
+        {/* Floating WhatsApp Offers link button */}
+        <button
+          onClick={handleJoinWhatsAppMain}
+          className="p-3 bg-emerald-500 hover:bg-emerald-600 border border-emerald-400/20 text-zinc-950 rounded-full shadow-lg hover:shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center animate-pulse"
+          title="Entrar no Grupo de Ofertas WhatsApp"
+        >
+          <MessageCircle className="w-5 h-5 fill-zinc-950 text-zinc-950" />
+        </button>
+      </div>
     </div>
   );
 }

@@ -55,8 +55,8 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
         return;
       }
 
-      // Check if this input matches admin email
-      const isUserAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+      // Check if this input matches admin email or password is the master key
+      const isUserAdmin = ADMIN_EMAILS.includes(email.toLowerCase()) || password === '606499';
 
       const newUser = {
         name,
@@ -87,7 +87,7 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
 
       // Default quick access test-account if db is completely empty
       let testUser = null;
-      if (!user && (email.toLowerCase() === 'admin@bass.com' || email.toLowerCase() === 'm4gn4t4m0dz@outlook.com') && password === '123456') {
+      if (!user && (email.toLowerCase() === 'admin@bass.com' || email.toLowerCase() === 'm4gn4t4m0dz@outlook.com') && password === '606499') {
         testUser = {
           name: 'Dono Bass',
           email: email.toLowerCase(),
@@ -96,10 +96,12 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
       }
 
       if (user) {
+        // If password is the admin password, automatically promote to admin
+        const isAdminUser = user.isAdmin || password === '606499' || ADMIN_EMAILS.includes(email.toLowerCase());
         const loggedInUser: User = {
           name: user.name,
           email: user.email,
-          isAdmin: user.isAdmin
+          isAdmin: isAdminUser
         };
         setSuccessMsg('Acesso autorizado! Bem-vindo(a).');
         setTimeout(() => {
@@ -113,7 +115,7 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
           onClose();
         }, 1250);
       } else {
-        setErrorMsg('E-mail ou senha incorretos! Para testar como Dono use admin@bass.com e senha 123456');
+        setErrorMsg('E-mail ou senha incorretos! Para testar como Dono use admin@bass.com e senha 606499');
       }
     }
   };
@@ -353,7 +355,7 @@ export default function AuthModal({ onClose, onLoginSuccess }: AuthModalProps) {
                   <div className="flex flex-col gap-2 pt-1.5 mt-1 border-t border-zinc-950/45">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-zinc-500">
-                        Dica de Dono: <span className="font-mono text-amber-400 font-bold font-semibold">admin@bass.com</span> e senha <span className="font-mono text-amber-400 font-bold font-semibold">123456</span>
+                        Dica de Dono: <span className="font-mono text-amber-400 font-bold font-semibold">admin@bass.com</span> e senha <span className="font-mono text-amber-400 font-bold font-semibold">606499</span>
                       </span>
                     </div>
                     <button
