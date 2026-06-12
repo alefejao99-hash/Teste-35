@@ -1,0 +1,6 @@
+{
+  "name": "Bass Compre Mais Achadinho",
+  "description": "Plataforma de achadinhos, promoções e ofertas imperdíveis de canais e afiliados.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

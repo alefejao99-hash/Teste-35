@@ -1,0 +1,100 @@
+import { Product } from './types';
+
+export const INITIAL_PRODUCTS: Product[] = [
+  {
+    id: 'oferta-whatsapp-vip',
+    title: '🟢 GRUPO VIP DE OFERTAS NO WHATSAPP',
+    description: 'Participe do nosso grupo oficial do WhatsApp e receba cupons de desconto exclusivos da Shopee, Amazon e Mercado Livre, além de promoções relâmpago antes de todo mundo! É 100% gratuito.',
+    imageUrl: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&q=80&w=600',
+    affiliateUrl: 'https://chat.whatsapp.com/Lf3yyMFdpxd36JI2V3PJQ3',
+    date: 'maio 24, 2026',
+    category: 'outros',
+    isFeatured: true,
+    clicks: 1420,
+    whatsAppButtonText: 'ENTRAR NO GRUPO DE OFERTAS',
+    platforms: 'whatsapp'
+  },
+  {
+    id: 'casas-parnaiba',
+    title: '🏠 CASAS PARA ALUGAR EM PARNAÍBA - PI',
+    description: 'Está difícil encontrar casa boa e com preço justo para alugar em Parnaíba - PI? Criamos um grupo especial de divulgamento direto, onde casas novas são postadas todos os dias para você fechar negócio seguro direto com proprietários.',
+    imageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=600',
+    affiliateUrl: 'https://chat.whatsapp.com/example-aluguel',
+    date: 'março 20, 2026',
+    category: 'aluguel',
+    clicks: 894,
+    whatsAppButtonText: 'ENTRAR NO GRUPO DE ALUGUEL',
+    rating: 4.8,
+    platforms: 'whatsapp'
+  },
+  {
+    id: 'baby-doll-canelado',
+    title: '🛒 Baby Doll Canelado com Renda Conforto Estilo Noites Suaves Pijama',
+    description: 'Extremamente confortável, tecido canelado premium macio com acabamento em renda delicada no busto. Caimento perfeito que realça de forma elegante sem perder o conforto para suas noites.',
+    imageUrl: 'https://images.unsplash.com/photo-1562572159-4ebcd318f4dd?auto=format&fit=crop&q=80&w=600',
+    originalPrice: 49.90,
+    discountPrice: 29.99,
+    affiliateUrl: 'https://shope.ee/example-babydoll',
+    date: 'março 05, 2026',
+    category: 'moda',
+    clicks: 452,
+    rating: 4.9,
+    platforms: 'shopee'
+  },
+  {
+    id: 'tenis-o2x-shade',
+    title: '🛒 Tênis O2X Shade Fitness Feminino Academia Caminhada Confortável',
+    description: 'Tênis esportivo feminino ultra-leve desenvolvido para caminhadas, treinos em academia e uso diário. Cabedal respirável de alta resistência e palmilha anatômica em gel amortecedor.',
+    imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=600',
+    originalPrice: 89.90,
+    discountPrice: 59.90,
+    affiliateUrl: 'https://shope.ee/example-tenis',
+    date: 'março 05, 2026',
+    category: 'calcados',
+    clicks: 1210,
+    rating: 4.7,
+    platforms: 'shopee'
+  },
+  {
+    id: 'kit-necessaires-washbag',
+    title: '🛒 Kit 3 Necessaires impermeável Portátil Para Produtos De Higiene Pessoal MC04',
+    description: 'Estojo organizador elegante de cosméticos e produtos de higiene. Possui acabamento fosco suave moderno escrito "WASHBAG", fecho em zíper resistente e alça lateral.',
+    imageUrl: 'https://images.unsplash.com/photo-1618331835717-801e976710b2?auto=format&fit=crop&q=80&w=600',
+    originalPrice: 39.90,
+    discountPrice: 19.95,
+    affiliateUrl: 'https://shope.ee/example-washbag',
+    date: 'março 05, 2026',
+    category: 'casa',
+    clicks: 341,
+    rating: 4.6,
+    platforms: 'shopee'
+  },
+  {
+    id: 'carrinho-jipe-infantil',
+    title: '🛒 Carrinho Passeio Andador Jip Jip Câmbio Buzina Som Infantil Cores Colorido',
+    description: 'O Jip Jip é um brinquedo infantil andador e de passeio dinâmico. Acompanha empurrador regulável, possui buzina realística, volante giratório de treino e porta-objetos.',
+    imageUrl: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&q=80&w=600',
+    originalPrice: 220.00,
+    discountPrice: 164.90,
+    affiliateUrl: 'https://shope.ee/example-jipjip',
+    date: 'março 05, 2026',
+    category: 'bebe-brinquedos',
+    clicks: 520,
+    rating: 5.0,
+    platforms: 'shopee'
+  },
+  {
+    id: 'pack-videos-shopee',
+    title: '🔥 PACKS DE VÍDEOS SHOPEE – PRONTO PRA VENDER! 🔥',
+    description: 'Ideal para afiliados, revendedores e criadores de conteúdo que querem alavancar as vendas com vídeos virais de alta qualidade e com alta conversão! O que você recebe: Vídeos editados de alta conversão, tutoriais passo a passo e modelos prontos.',
+    imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&q=80&w=600',
+    originalPrice: 97.00,
+    discountPrice: 19.90,
+    affiliateUrl: 'https://kiwify.com.br/example-pack',
+    date: 'março 03, 2026',
+    category: 'packs-videos',
+    clicks: 2940,
+    rating: 4.9,
+    platforms: 'outros'
+  }
+];
